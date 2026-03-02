@@ -28,6 +28,9 @@ public class User {
     private String password;
     
     @Column(length = 20)
+    private String role = "USER";
+    
+    @Column(length = 20)
     private String phone;
     
     @Column(length = 200)

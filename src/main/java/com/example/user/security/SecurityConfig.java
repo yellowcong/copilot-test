@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -41,6 +42,13 @@ public class SecurityConfig {
                     auth.requestMatchers("/h2-console/**").denyAll();
                     auth.requestMatchers("/actuator/**").denyAll();
                 }
+                
+                // Only ADMIN can access all user CRUD operations
+                // Regular users can only access their own data (enforced in controller)
+                auth.requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN");
+                auth.requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN");
+                auth.requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN");
+                auth.requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN");
                 
                 auth.anyRequest().authenticated();
             })
