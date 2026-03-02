@@ -4,6 +4,7 @@ import com.example.user.dto.UserDTO;
 import com.example.user.entity.User;
 import com.example.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -34,6 +36,9 @@ public class UserService {
             throw new RuntimeException("Email already exists: " + userDTO.getEmail());
         }
         User user = convertToEntity(userDTO);
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
     }
@@ -52,6 +57,10 @@ public class UserService {
         user.setEmail(userDTO.getEmail());
         user.setPhone(userDTO.getPhone());
         user.setAddress(userDTO.getAddress());
+        
+        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        }
         
         User updatedUser = userRepository.save(user);
         return convertToDTO(updatedUser);
@@ -81,6 +90,7 @@ public class UserService {
         User user = new User();
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
+        user.setPassword(dto.getPassword());
         user.setPhone(dto.getPhone());
         user.setAddress(dto.getAddress());
         return user;
