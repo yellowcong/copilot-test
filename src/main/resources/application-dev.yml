@@ -1,0 +1,4 @@
+jwt:
+  # WARNING: This default secret is for local development ONLY. Never use in production.
+  # Set the JWT_SECRET environment variable (min 32 chars) for all non-dev environments.
+  secret: ${JWT_SECRET:dev-only-secret-change-me-in-production-32chars}
