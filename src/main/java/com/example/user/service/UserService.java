@@ -36,9 +36,13 @@ public class UserService {
             throw new RuntimeException("Email already exists: " + userDTO.getEmail());
         }
         User user = convertToEntity(userDTO);
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        
+        // Password is required for API-based user creation
+        if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("Password is required");
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
     }

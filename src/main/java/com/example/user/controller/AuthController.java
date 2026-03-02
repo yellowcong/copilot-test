@@ -5,6 +5,7 @@ import com.example.user.auth.LoginResponse;
 import com.example.user.entity.User;
 import com.example.user.repository.UserRepository;
 import com.example.user.security.JwtUtils;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,12 +22,12 @@ public class AuthController {
     private final JwtUtils jwtUtils;
     
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + request.getEmail()));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        // Use generic message to prevent user enumeration
+        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
         
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid password");
+        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         
         String token = jwtUtils.generateToken(user.getEmail(), user.getId());
@@ -41,13 +42,17 @@ public class AuthController {
     }
     
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> register(@Valid @RequestBody LoginRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists: " + request.getEmail());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
         
         User user = new User();
-        user.setName(request.getEmail().split("@")[0]);
+        // Safely handle email parsing
+        String name = request.getEmail() != null && request.getEmail().contains("@") 
+            ? request.getEmail().split("@")[0] 
+            : "User";
+        user.setName(name);
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         

@@ -1,6 +1,7 @@
 package com.example.user.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,19 +20,38 @@ public class SecurityConfig {
     
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     
+    @Value("${spring.profiles.active:default}")
+    private String activeProfile;
+    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        boolean isDevProfile = "dev".equalsIgnoreCase(activeProfile) || "default".equalsIgnoreCase(activeProfile);
+        
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/actuator/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers("/api/auth/**").permitAll();
+                
+                // H2 console and actuator only accessible in dev profile
+                if (isDevProfile) {
+                    auth.requestMatchers("/h2-console/**").permitAll();
+                    auth.requestMatchers("/actuator/health").permitAll();
+                } else {
+                    auth.requestMatchers("/h2-console/**").denyAll();
+                    auth.requestMatchers("/actuator/**").denyAll();
+                }
+                
+                auth.anyRequest().authenticated();
+            })
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        // Only disable frameOptions in dev profile
+        if (isDevProfile) {
+            http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+        } else {
+            http.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
+        }
         
         return http.build();
     }

@@ -3,6 +3,7 @@ package com.example.user.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,14 +14,27 @@ import java.util.Date;
 @Component
 public class JwtUtils {
     
-    @Value("${jwt.secret:mySecretKeyForJwtTokenGenerationMustBeLongEnough123456}")
+    @Value("${jwt.secret:}")
     private String secret;
     
     @Value("${jwt.expiration:86400000}")
     private Long expiration;
     
+    private SecretKey signingKey;
+    
+    @PostConstruct
+    public void init() {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT secret must be configured via jwt.secret property or JWT_SECRET environment variable");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 characters long for HS256");
+        }
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+    
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return signingKey;
     }
     
     public String generateToken(String email, Long userId) {
@@ -46,6 +60,9 @@ public class JwtUtils {
     }
     
     public boolean validateToken(String token) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
         try {
             Jwts.parser()
                     .verifyWith(getSigningKey())

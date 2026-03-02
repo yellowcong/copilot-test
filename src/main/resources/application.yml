@@ -13,7 +13,7 @@ spring:
   
   h2:
     console:
-      enabled: true
+      enabled: false
       path: /h2-console
   
   jpa:
@@ -25,5 +25,5 @@ spring:
         format_sql: true
 
 jwt:
-  secret: mySecretKeyForJwtTokenGenerationMustBeLongEnough123456
+  secret: ${JWT_SECRET:}
   expiration: 86400000
