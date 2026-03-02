@@ -3,7 +3,9 @@ package com.example.user.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +26,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
     
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @Column(nullable = false, length = 200)
     private String password;
     

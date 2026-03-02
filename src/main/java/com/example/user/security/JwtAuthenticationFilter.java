@@ -5,9 +5,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -17,6 +19,7 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     private final JwtUtils jwtUtils;
@@ -28,16 +31,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         String token = getTokenFromRequest(request);
         
-        if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+        if (StringUtils.hasText(token) && jwtUtils.validateToken(token)
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
             String email = jwtUtils.getEmailFromToken(token);
             
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-            
-            UsernamePasswordAuthenticationToken authentication = 
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            try {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                
+                UsernamePasswordAuthenticationToken authentication = 
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (UsernameNotFoundException e) {
+                // User was deleted/disabled after token issuance — do not authenticate
+                log.warn("Valid token presented for non-existent user: {}", email);
+                SecurityContextHolder.clearContext();
+            }
         }
         
         filterChain.doFilter(request, response);
